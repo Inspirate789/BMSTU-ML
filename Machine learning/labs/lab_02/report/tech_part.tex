@@ -1,0 +1,137 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации выбранных алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация обучения модели полиномиальной регрессии с использованием метода наименьших квадратов, а также с применением Ридж-регрессии и Лассо-регрессии.
+
+\begin{lstlisting}[label=lst:1,caption=Обучение модели полиномиальной регрессии с регуляризацией]
+	import numpy as np
+	import matplotlib.pyplot as plt
+	
+	x = np.linspace(0, 10, 50)
+	y = 1/2*x + 2*np.sin(x) + 5
+	y = y + np.random.randn(50)*0.5
+	plt.scatter(x,y)
+	plt.show()
+	
+	degrees = [6, 11, 16, 25]
+	polyline = np.linspace(np.min(x), np.max(x), 250)
+	
+	for degree in degrees:
+		model = np.poly1d(np.polyfit(x, y, degree))
+		plt.plot(polyline, model(polyline), label='@Полином степени @{}:'.format(degree))
+		print('@Полином степени @{}:'.format(degree))
+		print(model)
+		print()
+	
+	plt.scatter(x, y, color='black')
+	plt.legend()
+	plt.show()
+	
+	from sklearn.model_selection import train_test_split
+	X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=777)
+	
+	from sklearn.model_selection import train_test_split
+	from sklearn.linear_model import Ridge
+	from sklearn.preprocessing import PolynomialFeatures
+	
+	alphas = np.logspace(-3, 2, 12, endpoint=True)
+	scores = []
+	for alpha in alphas:
+		cur_scores = []
+		for degree in degrees:
+			poly = PolynomialFeatures(degree=degree)
+			xp = poly.fit_transform(x.reshape(-1, 1))
+			X_train, X_test, y_train, y_test = train_test_split(xp, y, test_size=0.20, random_state=777)
+			ridge_regression = Ridge(alpha=alpha)
+			ridge_regression.fit(X_train, y_train)
+			print('@Полином степени @{}, alpha {}:'.format(degree, alpha))
+			print(ridge_regression.coef_)
+			score = ridge_regression.score(X_test, y_test)
+			cur_scores.append(score)
+			print('@Точность предсказания: @{}'.format(score))
+			print()
+		scores.append(cur_scores)
+	
+	from mpl_toolkits import mplot3d
+	import numpy as np
+	import matplotlib.pyplot as plt
+	ax = plt.axes(projection='3d')
+	Alphas, Degrees = np.meshgrid(alphas, degrees)
+	ax.set_xlabel('alphas')
+	ax.set_ylabel('degrees')
+	ax.set_zlabel('scores')
+	ax.scatter(Alphas, Degrees, np.transpose(scores), c=np.transpose(scores))
+	
+	from sklearn.model_selection import train_test_split
+	from sklearn.linear_model import Lasso
+	from sklearn.preprocessing import PolynomialFeatures
+	
+	alphas = np.logspace(-3, 2, 12, endpoint=True)
+	scores = []
+	
+	for alpha in alphas:
+		cur_scores = []
+		for degree in degrees:
+			poly = PolynomialFeatures(degree=degree)
+			xp = poly.fit_transform(x.reshape(-1, 1))
+			X_train, X_test, y_train, y_test = train_test_split(xp, y, test_size=0.20, random_state=777)
+			lasso_regression = Lasso(alpha=alpha)
+			lasso_regression.fit(X_train, y_train)
+			print('@Полином степени@ {}, alpha {}:'.format(degree, alpha))
+			print(lasso_regression.coef_)
+			score = lasso_regression.score(X_test, y_test)
+			cur_scores.append(score)
+			print('@Точность предсказания: @{}'.format(score))
+			print()
+		scores.append(cur_scores)
+	
+	from mpl_toolkits import mplot3d
+	import numpy as np
+	import matplotlib.pyplot as plt
+	ax = plt.axes(projection='3d')
+	Alphas, Degrees = np.meshgrid(alphas, degrees)
+	ax.set_xlabel('alphas')
+	ax.set_ylabel('degrees')
+	ax.set_zlabel('scores')
+	ax.scatter(Alphas, Degrees, np.transpose(scores), c=np.transpose(scores))
+	
+	def compare_models(degree, alpha):
+		polyline = np.linspace(np.min(x), np.max(x), 250)
+		model = np.poly1d(np.polyfit(x, y, degree))
+		plt.plot(polyline, model(polyline), label='@Без регуляризации@')
+		poly = PolynomialFeatures(degree=degree)
+		xp = poly.fit_transform(x.reshape(-1, 1))
+		ridge_regression = Ridge(alpha=alpha)
+		ridge_regression.fit(xp, y)
+		plt.plot(polyline, ridge_regression.predict(poly.fit_transform(polyline.reshape(-1, 1))), label='Ridge @регрессия@')
+		lasso_regression = Lasso(alpha=alpha)
+		lasso_regression.fit(xp, y)
+		plt.plot(polyline, lasso_regression.predict(poly.fit_transform(polyline.reshape(-1, 1))), label='Lasso @регрессия@')
+		plt.scatter(x, y, color='red')
+		plt.title('@Полином степени@ {}:'.format(degree))
+		plt.legend()
+		plt.show()
+	
+	degree = 6
+	alpha = 1e-3
+	compare_models(degree, alpha)
+	
+	degree = 11
+	alpha = 1e-3
+	compare_models(degree, alpha)
+	
+	degree = 16
+	alpha = 1e-3
+	compare_models(degree, alpha)
+	
+	degree = 25
+	alpha = 1e-3
+	compare_models(degree, alpha)
+\end{lstlisting}
+
+\clearpage

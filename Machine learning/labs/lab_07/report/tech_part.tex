@@ -1,0 +1,243 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация алгоритма обучения классификатора на основе многослойного персептрона.
+
+\begin{lstlisting}[label=lst:1,caption=Классификация с использованием нейросетевого подхода]
+	import math
+	import numpy as np
+	import matplotlib.pyplot as plt
+	from matplotlib.ticker import MultipleLocator, FormatStrFormatter
+	from sklearn.neural_network._multilayer_perceptron import MLPClassifier
+	from sklearn.neural_network._base import ACTIVATIONS
+	from sklearn.datasets import make_blobs
+	from sklearn.model_selection import train_test_split
+	from sklearn.metrics import accuracy_score, recall_score, precision_score, f1_score, confusion_matrix, classification_report, matthews_corrcoef
+	import seaborn as sns
+	
+	import tensorflow
+	from tensorflow.keras import losses, metrics, optimizers
+	from tensorflow.keras.initializers import HeNormal, GlorotNormal
+	from tensorflow.keras.models import Sequential
+	from tensorflow.keras.layers import Dense, Activation, Dropout
+	from tensorflow.keras import backend
+	from tensorflow.keras.utils import to_categorical
+	import tensorflow.math as tfm
+	
+	import warnings
+	warnings.filterwarnings('ignore')
+	
+	centers = [[0, 0], [3.5, 3.5], [5.5, 5.5], [9, 9], [7.5, 1], [1, 7.5]]
+	X, y = make_blobs(n_samples=1200, centers=centers, random_state=7)
+	y = list(map(lambda x: x if (x < 2) else x - 1, y))
+	y = list(map(lambda x: x if (x < 4) else x - 1, y))
+	
+	X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+	print(np.unique(y_test))
+	
+	plt.scatter(X_train[:, 0], X_train[:, 1], c=y_train, edgecolors='k', label='@Обучающая выборка@')
+	plt.scatter(X_test[:, 0], X_test[:, 1], c=y_test, cmap=plt.cm.RdBu, marker='x', s=50, label='@Тестовая выборка@')
+	plt.title('@Сгенерированные данные@')
+	plt.xlabel('@Признак 1@')
+	plt.ylabel('@Признак 2@')
+	plt.show()
+	
+	feature_vector_length = 2
+	num_classes = 4
+	input_shape = (feature_vector_length,)
+	
+	y_train = to_categorical(y_train, num_classes)
+	y_test = to_categorical(y_test, num_classes)
+	
+	def plot_surfaces(model, X_train, y_train, X_test, y_test, h=0.02):
+		x_min, x_max = X[:, 0].min() - 6, X[:, 0].max() + 6
+		y_min, y_max = X[:, 1].min() - 6, X[:, 1].max() + 6
+		xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+		Z = model.predict(np.c_[xx.ravel(), yy.ravel()], verbose=1)
+		Z = np.argmax(Z, axis=1).reshape(xx.shape)
+		
+		plt.figure(figsize=(10, 10))
+		plt.contourf(xx, yy, Z, cmap=plt.cm.RdBu, alpha=.8)
+		plt.scatter(X_train[:, 0], X_train[:, 1], c=np.argmax(y_train, axis=1), cmap=plt.cm.RdBu, edgecolors='k', label='@Обучающая выборка@')
+		plt.scatter(X_test[:, 0], X_test[:, 1], c=np.argmax(y_test, axis=1), cmap=plt.cm.RdBu, marker='x', s=50, label='@Тестовая выборка@')
+		plt.title(f'@Разделяющие поверхности@')
+		plt.xlabel('@Признак 1@')
+		plt.ylabel('@Признак 2@')
+		plt.legend()
+		plt.show()
+	
+	def plot_results(metrics, title=None, ylabel=None, xlim=None, ylim=None, metric_name=None, color=None):
+		fig, ax = plt.subplots(figsize=(15, 4))
+		
+		if not (isinstance(metric_name, list) or isinstance(metric_name, tuple)):
+			metrics = [metrics,]
+			metric_name = [metric_name,]
+		
+		for idx, metric in enumerate(metrics):
+			ax.plot(metric, color=color[idx])
+		
+		plt.xlabel("Epoch")
+		plt.ylabel(ylabel)
+		plt.title(title)
+		plt.xlim(xlim)
+		plt.ylim(ylim)
+		
+		ax.xaxis.set_major_locator(MultipleLocator((xlim[1] - xlim[0])/10))
+		ax.xaxis.set_major_formatter(FormatStrFormatter('%d'))
+		ax.xaxis.set_minor_locator(MultipleLocator(1))
+		plt.grid(True)
+		plt.legend(metric_name)
+		plt.show()
+		plt.close()
+	
+	def learn(X_train, y_train, X_test, y_test, activation_input, activation_hidden, activation_output, additional_metrics=[]):
+		num_classes = y_train.shape[1]
+		model = Sequential()
+		initializer = GlorotNormal()
+		model.add(InputLayer(input_shape=input_shape, activation=activation_input, kernel_initializer=initializer))
+		model.add(Dense(6, activation=activation_hidden, kernel_initializer=initializer))
+		model.add(Dense(num_classes, activation=activation_output, kernel_initializer=initializer))
+		metrics = ['accuracy']
+		metrics.extend(additional_metrics)
+		model.compile(
+			loss='categorical_crossentropy',
+			optimizer='adam',
+			metrics=metrics,
+		)
+
+		max_epochs = 200
+		epochs_per_iter = 25
+		train_loss = []
+		train_acc  = []
+		valid_loss = []
+		valid_acc  = []
+		
+		epoch = 0
+		while epoch < max_epochs:
+			training_results = model.fit(X_train, y_train, batch_size=16, initial_epoch=epoch, epochs=epoch+epochs_per_iter, verbose=1, validation_data=(X_test, y_test))
+			print(training_results.history.keys())
+			train_loss.extend(training_results.history["loss"])
+			train_acc.extend(training_results.history["accuracy"])
+			valid_loss.extend(training_results.history["val_loss"])
+			valid_acc.extend(training_results.history["val_accuracy"])
+			plot_surfaces(model, X_train, y_train, X_test, y_test, 0.05)
+			epoch += epochs_per_iter
+		
+		plot_results([ train_loss, valid_loss ],
+								ylabel="Loss",
+								xlim = [0, max_epochs],
+								ylim = [0.0, 1.5],
+								metric_name=["Training Loss", "Validation Loss"],
+								color=["g", "b"])
+		plot_results([ train_acc, valid_acc ],
+								ylabel="Accuracy",
+								xlim = [0, max_epochs],
+								ylim = [0.0, 1.0],
+								metric_name=["Training Accuracy", "Validation Accuracy"],
+								color=["g", "b"])
+		
+		y_pred = model.predict(X_test)
+		print("\nClassification Report:")
+		print(classification_report(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1)))
+		print("\nAdditional Metrics:")
+		mcc = matthews_corrcoef(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))
+		print(f"MCC: {mcc:.4f}\n")
+		plt.figure(figsize=(8, 6))
+		cm = confusion_matrix(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))
+		sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+		plt.title('Confusion Matrix')
+		plt.xlabel('Predicted')
+		plt.ylabel('True')
+		plt.show()
+		return model
+	
+	model_1 = learn(X_train, y_train, X_test, y_test, 'relu', 'relu', 'softmax', ['precision', 'recall'])
+	model_2 = learn(X_train, y_train, X_test, y_test, 'sigmoid', 'sigmoid', 'softmax')
+
+	def sigmoid_b5(x):
+		return tfm.divide(1.0, tfm.add(1.0, tfm.exp(tfm.multiply(x, -5.0))))
+	
+	actv = Activation(sigmoid_b5)
+	model_3 = learn(X_train, y_train, X_test, y_test, actv, actv, 'softmax')
+	model_4 = learn(X_train, y_train, X_test, y_test, 'sigmoid', 'sigmoid', 'sigmoid', ['precision', 'recall'])
+	
+	weights, biases = model_4.layers[-2].get_weights()
+	print("@Весовая матрица скрытого слоя@:\n", weights)
+	print("@Смещения скрытого слоя@:\n", biases)
+	print()
+	
+	x_min, x_max = X[:, 0].min() - 3, X[:, 0].max() + 3
+	y_min, y_max = X[:, 1].min() - 3, X[:, 1].max() + 3
+	x_vals = np.linspace(x_min, x_max, 100)
+	plt.figure(figsize=(10,8))
+	plt.scatter(X_train[:,0], X_train[:,1], c=np.argmax(y_train, axis=1), edgecolors='k', label='@Обучающая выборка@')
+	plt.scatter(X_test[:,0], X_test[:,1], c=np.argmax(y_test, axis=1), marker='x', s=80, label='@Тестовая выборка@')
+	colors = ['red', 'blue', 'green', 'orange', 'magenta', 'pink']
+	for i in range(len(weights[0])):
+		w = weights[:, i]
+		b = biases[i]
+		if np.abs(w[1]) > 1e-6:
+			y_vals = -(w[0]/w[1])*x_vals - b/w[1]
+			plt.plot(x_vals, y_vals, color=colors[i], linestyle='--',
+						  label=f'@Разделяющая линия для нейрона {i}@')
+	plt.xlim(x_min, x_max)
+	plt.ylim(y_min, y_max)
+	plt.title("@Разделяющие линии, полученные из весов нейронов скрытого слоя@")
+	plt.xlabel("@Признак 1@")
+	plt.ylabel("@Признак 2@")
+	plt.legend()
+	plt.show()
+	
+	center_x, center_y = np.mean(X[:, 0]), np.mean(X[:, 1])
+	r = 12
+	max_class = np.max(y)
+	X_new, y_new = X, y
+	for angle in np.linspace(0, 2*math.pi, 720):
+		X_new = np.vstack([X_new, [center_x+r*math.cos(angle), center_y+r*math.sin(angle)]])
+		y_new = np.hstack([y_new, np.asarray([max_class+1]).reshape((1,))])
+	X_train_new, X_test_new, y_train_new_src, y_test_new_src = train_test_split(X_new, y_new, test_size=0.2)
+	plt.scatter(X_train_new[:, 0], X_train_new[:, 1], c=y_train_new_src, edgecolors='k', label='@Обучающая выборка@')
+	plt.scatter(X_test_new[:, 0], X_test_new[:, 1], c=y_test_new_src, cmap=plt.cm.RdBu, marker='x', s=50, label='@Тестовая выборка@')
+	plt.title('@Сгенерированные данные@')
+	plt.xlabel('@Признак 1@')
+	plt.ylabel('@Признак 2@')
+	plt.show()
+	y_train_new = to_categorical(y_train_new_src, num_classes+1)
+	y_test_new = to_categorical(y_test_new_src, num_classes+1)
+	model_5 = learn(X_train_new, y_train_new, X_test_new, y_test_new, 'relu', 'relu', 'softmax', ['precision', 'recall'])
+	
+	X_user = np.array([
+		[0, 0],
+		[12, -3],
+		[15, -4],
+		[-5, 13]
+	], dtype=np.float64)
+	
+	y_pred = model_5.predict(X_user)
+	np.argmax(y_pred, axis=1)
+	
+	h=0.1
+	x_min, x_max = X_new[:, 0].min() - 3, X_new[:, 0].max() + 3
+	y_min, y_max = X_new[:, 1].min() - 3, X_new[:, 1].max() + 3
+	xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+	Z = model_5.predict(np.c_[xx.ravel(), yy.ravel()], verbose=1)
+	Z = np.argmax(Z, axis=1).reshape(xx.shape)
+	
+	plt.figure(figsize=(10, 10))
+	plt.contourf(xx, yy, Z, cmap=plt.cm.RdBu, alpha=.7)
+	plt.scatter(X_train_new[:, 0], X_train_new[:, 1], c=np.argmax(y_train_new, axis=1), cmap=plt.cm.RdBu, edgecolors='k', label='@Обучающая выборка@')
+	plt.scatter(X_test_new[:, 0], X_test_new[:, 1], c=np.argmax(y_test_new, axis=1), cmap=plt.cm.RdBu, s=50, label='@Тестовая выборка@')
+	plt.scatter(X_user[:, 0], X_user[:, 1], c=np.argmax(y_pred, axis=1), cmap=plt.cm.cividis, marker='x', s=125, label='@Дополнительные точки@')
+	plt.title(f'@Разделяющие поверхности@')
+	plt.xlabel('@Признак 1@')
+	plt.ylabel('@Признак 2@')
+	plt.legend()
+	plt.show()
+\end{lstlisting}
+
+\clearpage

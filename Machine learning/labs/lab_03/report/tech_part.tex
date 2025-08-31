@@ -1,0 +1,129 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация алгоритма проверки статистических гипотез для двух выборок.
+
+\begin{lstlisting}[label=lst:1,caption=Проверка статистических гипотез для двух выборок]
+	import numpy as np
+	import scipy.stats as stats
+	import matplotlib.pyplot as plt
+	import seaborn as sns
+	import math
+	
+	a = 0
+	sigma = 1
+	n = m = 30
+	delta = 0.1
+	alpha = 0.05
+	
+	x = np.random.normal(a, sigma, n)
+	y = np.random.normal(a, sigma, n)
+	x_0, y_0 = x, y
+	
+	plt.hist(x, alpha=0.5, label='x')
+	plt.hist(y, alpha=0.5, label='y')
+	plt.legend(loc='upper right')
+	plt.show()
+	
+	shapiro_test1 = stats.shapiro(x)
+	shapiro_test2 = stats.shapiro(y)
+	
+	print("@Тест Шапиро-Уилка для выборки@ 1: Statistic =", shapiro_test1.statistic, "p-value =", shapiro_test1.pvalue)
+	print("@Тест Шапиро-Уилка для выборки@ 2: Statistic =", shapiro_test2.statistic, "p-value =", shapiro_test2.pvalue)
+	
+	t_stat, p_value = stats.ttest_ind(x, y, equal_var=True)
+	print("@Тест Стьюдента для выборок@: Statistic =", t_stat, "p-value =", p_value)
+	
+	a_new = a
+	t_stats, p_values = [], []
+	rejected = False
+	
+	while not rejected:
+		t_stat, p_value = stats.ttest_ind(x, y, equal_var=True)
+		rejected = p_value < alpha
+		t_stats.append(t_stat)
+		p_values.append(p_value)
+		if not rejected:
+			a_new += delta
+			y += delta
+	
+	print('@Итоговый сдвиг второй выборки@:', a_new - a)
+	x_4, y_4 = x, y
+	
+	plt.plot(t_stats, label="t-statistic")
+	plt.plot(p_values, label="P-value")
+	plt.axhline(alpha, color="red", linestyle="--")
+	plt.legend()
+	plt.show()
+	
+	plt.hist(x_4, alpha=0.5, label='x')
+	plt.hist(y_4, alpha=0.5, label='y')
+	plt.legend(loc='upper right')
+	plt.show()
+	
+	a_new = (a + a_new) / 2
+	y -= (a_new - a) / 2
+	t_stats, p_values = [], []
+	rejected = False
+	
+	while not rejected:
+		t_stat, p_value = stats.ttest_ind(x, y, equal_var=True)
+		rejected = p_value < alpha
+		t_stats.append(t_stat)
+		p_values.append(p_value)
+		if not rejected:
+			x = np.hstack((x, np.random.normal(a, sigma, int(n*delta))))
+			y = np.hstack((y, np.random.normal(a_new, sigma, int(n*delta))))
+	
+	print('@Размеры выборок@: len(x)=', len(x), 'len(y)=', len(y))
+	x_5, y_5 = x, y
+	
+	plt.plot(t_stats, label="t-statistic")
+	plt.plot(p_values, label="P-value")
+	plt.axhline(alpha, color="red", linestyle="--")
+	plt.legend()
+	plt.show()
+	
+	plt.hist(x_5, alpha=0.5, label='x')
+	plt.hist(y_5, alpha=0.5, label='y')
+	plt.legend(loc='upper right')
+	plt.show()
+	
+	conf_int_x = stats.t.interval(0.95, len(x_4)-1, loc=np.mean(x_4), scale=stats.sem(x_4))
+	conf_int_y = stats.t.interval(0.95, len(y_4)-1, loc=np.mean(y_4), scale=stats.sem(y_4))
+	
+	print(f"95% @доверительный интервал для@ x: {conf_int_x}")
+	print(f"@Ширина@ {conf_int_x[1] - conf_int_x[0]}")
+	print(f"95% @доверительный интервал для@ y: {conf_int_y}")
+	
+	conf_int_x = stats.t.interval(0.95, len(x_5)-1, loc=np.mean(x_5), scale=stats.sem(x_5))
+	conf_int_y = stats.t.interval(0.95, len(y_5)-1, loc=np.mean(y_5), scale=stats.sem(y_5))
+	
+	print(f"95% @доверительный интервал для@ x: {conf_int_x}")
+	print(f"@Ширина@ {conf_int_x[1] - conf_int_x[0]}")
+	print(f"95% @доверительный интервал для@ y: {conf_int_y}")
+	
+	t_dist = np.linspace(stats.t.ppf(0.001, n+m-2), stats.t.ppf(0.999, n+m-2), 1000)
+	pdf_values = stats.t.pdf(t_dist, n+m-2)
+	
+	plt.plot(t_dist, pdf_values, label='@t-распределение@')
+	plt.axvline(t_stat, color='r', linestyle='--', label='@Критическое значение@')
+	plt.fill_between(t_dist, pdf_values, where=((t_dist < stats.t.ppf(alpha/2, n+m-2)) | (t_dist > stats.t.ppf(1 - alpha/2, n+m-2))), color='gray', alpha=0.5, label='@Область отклонения гипотезы@')
+	plt.legend()
+	plt.show()
+	
+	print(f'@Критическое значение@: {t_stat:.4f}')
+	
+	ci_low_a1, ci_high_a1 = stats.norm.interval(0.95, loc=np.mean(x_0), scale=stats.sem(x))
+	ci_low_a2, ci_high_a2 = stats.norm.interval(0.95, loc=np.mean(y_0), scale=stats.sem(y))
+	
+	print(f'@Доверительный интервал для первой выборки@: [{ci_low_a1:.4f}, {ci_high_a1:.4f}]')
+	print(f'@Доверительный интервал для второй выборки@: [{ci_low_a2:.4f}, {ci_high_a2:.4f}]')
+\end{lstlisting}
+
+\clearpage

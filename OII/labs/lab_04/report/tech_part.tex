@@ -1,0 +1,75 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации выбранных алгоритмов был выбран язык программирования Python \cite{pythonlang} ввиду наличия библиотек для обучения нейронных сетей, таких как sklearn~\cite{sklearn} и tensorflow~\cite{tf}.
+
+\section{Реализация алгоритма}
+
+На листинге \ref{lst:1} представлена реализация классификации данных из датасета MNIST с использованием нейросетевого подхода.
+
+\begin{lstlisting}[label=lst:1,caption=Нейросетевой алгоритм классификации данных из датасета MNIST]
+	import numpy as np
+	import tensorflow as tf
+	from tensorflow.keras import layers, models
+	from sklearn.model_selection import train_test_split
+	import matplotlib.pyplot as plt
+	import seaborn as sns
+	
+	@\# Загрузка данных MNIST@
+	(x_train, y_train), (x_test, y_test) = tf.keras.datasets.mnist.load_data()
+	
+	@\# Нормализация изображений@
+	x_train, x_test = x_train / 255.0, x_test / 255.0
+	x_train = x_train.reshape(-1, 28 * 28)
+	x_test = x_test.reshape(-1, 28 * 28)
+	
+	@\# One-hot encoding для меток@
+	y_train = tf.keras.utils.to_categorical(y_train, 10)
+	y_test = tf.keras.utils.to_categorical(y_test, 10)
+	
+	@\# Функция для создания модели@
+	def create_model(num_hidden_layers):
+		model = models.Sequential()
+		model.add(layers.InputLayer(input_shape=(28 * 28,)))
+		for _ in range(num_hidden_layers):
+			model.add(layers.Dense(128, activation='relu'))
+		model.add(layers.Dense(10, activation='softmax'))
+		model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+		return model
+	
+	@\# Соотношения выборок@
+	ratios = [(10, 90), (20, 80), (30, 70), (40, 60), (50, 50),
+	(60, 40), (70, 30), (80, 20), (90, 10)]
+	
+	@\# Количество скрытых слоев@
+	hidden_layers_options = [0, 1, 5]
+	
+	@\# Словарь для хранения результатов@
+	results = {
+		'train_ratio': [],
+		'hidden_layers': [],
+		'train_accuracy': [],
+		'test_accuracy': []
+	}
+	
+	@\# Обучение и тестирование моделей@
+	for train_ratio, test_ratio in ratios:
+		train_size = int(len(x_train) * train_ratio / 100)
+		x_train_subset, _, y_train_subset, _ = train_test_split(x_train, y_train, train_size=train_size, random_state=42)
+		
+		for num_layers in hidden_layers_options:
+			model = create_model(num_layers)
+			history = model.fit(x_train_subset, y_train_subset, epochs=5, batch_size=32, verbose=0,
+											validation_data=(x_test, y_test))
+			train_acc = history.history['accuracy'][-1] * 100  @\# Увеличение масштаба для наглядности@
+			test_acc = history.history['val_accuracy'][-1] * 100  @\# Увеличение масштаба для наглядности@
+			
+			@\# Сохранение результатов@
+			results['train_ratio'].append(train_ratio)
+			results['hidden_layers'].append(num_layers)
+			results['train_accuracy'].append(train_acc)
+			results['test_accuracy'].append(test_acc)
+\end{lstlisting}
+
+\clearpage

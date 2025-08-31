@@ -1,0 +1,115 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация алгоритма фильтрации спама с использованием наивного байесовского классификатора.
+
+\begin{lstlisting}[label=lst:1,caption=Фильтрация спама с использованием наивного байесовского классификатора]
+	import kagglehub
+	
+	path = kagglehub.dataset_download("uciml/sms-spam-collection-dataset")
+	
+	import pandas as pd
+	import numpy as np
+	from sklearn.model_selection import train_test_split
+	from sklearn.feature_extraction.text import TfidfVectorizer
+	from sklearn.naive_bayes import MultinomialNB
+	from sklearn.pipeline import Pipeline
+	from sklearn.metrics import classification_report, confusion_matrix, matthews_corrcoef, ConfusionMatrixDisplay
+	import nltk
+	from nltk.corpus import stopwords
+	from nltk.tokenize import word_tokenize
+	import re
+	import seaborn as sns
+	import matplotlib.pyplot as plt
+	from wordcloud import WordCloud
+	
+	nltk.download('punkt')
+	nltk.download('punkt_tab')
+	nltk.download('stopwords')
+	
+	df = pd.read_csv(path+'/spam.csv', encoding='latin-1')
+	df = df.rename(columns={'v1': 'label', 'v2': 'message'})
+	df['label'] = df['label'].map({'ham': 0, 'spam': 1})
+	
+	def preprocess_text(text):
+		text = text.lower()
+		text = re.sub(r'[^a-zA-Z\s]', '', text)
+		tokens = word_tokenize(text)
+		stop_words = set(stopwords.words('english'))
+		tokens = [token for token in tokens if token not in stop_words]
+		return ' '.join(tokens)
+	
+	df['processed_message'] = df['message'].apply(preprocess_text)
+	X = df['processed_message']
+	y = df['label']
+	X_train, X_test, y_train, y_test = train_test_split(
+		X, y, test_size=0.2, random_state=42, stratify=y
+	)
+	
+	pipeline = Pipeline([
+	('tfidf', TfidfVectorizer(max_features=5000)),
+	('classifier', MultinomialNB())
+	])
+	pipeline.fit(X_train, y_train)
+	y_pred = pipeline.predict(X_test)
+	
+	print("\n@Отчет о классификации@:")
+	print(classification_report(y_test, y_pred, target_names=['Ham', 'Spam']))
+	print("\n@Матрица ошибок@:")
+	conf_matrix = confusion_matrix(y_test, y_pred)
+	print(conf_matrix)
+	cmd = ConfusionMatrixDisplay(conf_matrix, display_labels=['Ham','Spam'])
+	cmd.plot()
+	
+	tn, fp, fn, tp = conf_matrix.ravel()
+	accuracy = (tp + tn) / (tp + tn + fp + fn)
+	precision = tp / (tp + fp)
+	recall = tp / (tp + fn)
+	f1 = 2 * (precision * recall) / (precision + recall)
+	mcc = matthews_corrcoef(y_test, y_pred)
+	print("\n@Дополнительные метрики@:")
+	print(f"@Точность@ (Accuracy): {accuracy:.4f}")
+	print(f"@Точность@ (Precision): {precision:.4f}")
+	print(f"@Полнота@ (Recall): {recall:.4f}")
+	print(f"@F1-мера@: {f1:.4f}")
+	print(f"@MCC@: {mcc:.4f}")
+	
+	fig, ax = plt.subplots(figsize=(7,7))
+	sns.barplot(x=y.unique(), y=y.value_counts(), ax=ax)
+	ax.bar_label(ax.containers[0], fmt='%.i mails', fontsize=12, padding=0)
+	plt.xticks(rotation=45)
+	plt.xlabel('Message Types')
+	plt.ylabel('Message Counts')
+	plt.title('Message Types and Counts')
+	
+	text_ham=X.where(y==0).str.cat(sep=' ')
+	text_spam=X.where(y==1).str.cat(sep=' ')
+	wordcloud_ham = WordCloud(background_color='lightblue').generate(text_ham)
+	wordcloud_spam = WordCloud(background_color='red').generate(text_spam)
+	plt.imshow(wordcloud_ham, interpolation='bilinear')
+	plt.title('Legitimate Messages', fontdict={'fontsize' : 20, 'color' : 'blue'})
+	plt.axis("off")
+	plt.show()
+	plt.imshow(wordcloud_spam, interpolation='bilinear')
+	plt.title('Spam Messages', fontdict={'fontsize' : 20, 'color' : 'red'})
+	plt.axis("off")
+	plt.show()
+	
+	print("\n@Пример классификации новых сообщений@:")
+	test_messages = [
+		"URGENT! You have won a 1 week FREE membership in our 100,000 Prize Jackpot!",
+		"Hey, what time are we meeting for lunch tomorrow?",
+		"Congratulations! You've been selected to receive a free iPhone! Click here!",
+		"Don't forget to bring your laptop to the meeting"
+	]
+	predictions = pipeline.predict([preprocess_text(msg) for msg in test_messages])
+	for msg, pred in zip(test_messages, predictions):
+	print(f"{'SPAM' if pred == 1 else 'HAM'}: {msg}")
+\end{lstlisting}
+
+\clearpage

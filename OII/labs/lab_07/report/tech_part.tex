@@ -1,0 +1,177 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации выбранных алгоритмов был выбран язык программирования Python \cite{pythonlang} ввиду наличия библиотек для кластеризации (sklearn~\cite{sklearn}), подсчёта метрик её качества, а также для лемматизации текстов (pymorphy3~\cite{morph}).
+
+\section{Реализация алгоритма}
+
+На листинге \ref{lst:1} представлена реализация программы для сравнения алгоритмов кластеризации текстов методами K-средних и C-средних.
+
+\begin{lstlisting}[label=lst:1,caption= Сравнение алгоритмов кластеризации K-Means и K-Medoids]
+import os
+import numpy as np
+import pandas as pd
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
+from sklearn.metrics import pairwise_distances
+from sklearn.metrics import silhouette_score
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pymorphy3
+from nltk.corpus import stopwords
+import nltk
+import skfuzzy as fuzz
+
+# Make sure stopwords are downloaded
+nltk.download('stopwords')
+
+def read_file(file_path):
+	try:
+		if file_path.endswith('.docx'):
+			from docx import Document
+			doc = Document(file_path)
+			return ' '.join([para.text for para in doc.paragraphs])
+		elif file_path.endswith('.odt'):
+			from odf.opendocument import load
+			from odf.text import P
+			doc = load(file_path)
+			paragraphs = doc.getElementsByType(P)
+			return " ".join([str(p) for p in paragraphs if p and p.firstChild])
+		elif file_path.endswith('.txt'):
+			with open(file_path, 'r', encoding='latin-1') as file:
+				return file.read()
+		elif file_path.endswith('.html'):
+			from bs4 import BeautifulSoup
+			with open(file_path, 'r', encoding='latin-1') as file:
+				soup = BeautifulSoup(file, 'html.parser')
+				return soup.get_text()
+		else:
+			return ''
+	except Exception as e:
+		print(f"Error reading file {file_path}: {e}")
+	return ''
+
+def load_data(folder_path):
+	texts, filenames = [], []
+	for root, _, files in os.walk(folder_path):
+		for file in files:
+			filepath = os.path.join(root, file)
+			text = read_file(filepath)
+			if text:
+				texts.append(text)
+				filenames.append(file)
+	return texts, filenames
+
+folder_path = "./"  # Specify the folder path
+texts, filenames = load_data(folder_path)
+
+# Vectorization
+# 1. Vectorization by word forms
+vectorizer_forms = TfidfVectorizer(max_features=5000)
+X_forms = vectorizer_forms.fit_transform(texts)
+
+# 2. Lemmatization of the text
+morph = pymorphy3.MorphAnalyzer()
+lemmatized_texts = [' '.join([morph.parse(word)[0].normal_form for word in text.split()]) for text in texts]
+vectorizer_lemmas = TfidfVectorizer(max_features=5000)
+X_lemmas = vectorizer_lemmas.fit_transform(lemmatized_texts)
+
+def fuzzy_cmeans_clustering(X, n_clusters):
+	# Transpose for skfuzzy (skfuzzy expects shape (features, samples))
+	X = X.T.toarray() if not isinstance(X, np.ndarray) else X.T
+	
+	# Apply Fuzzy C-Means
+	cntr, u, _, _, _, _, _ = fuzz.cluster.cmeans(
+		X, c=n_clusters, m=1.1, error=0.01, maxiter=10000, init=None
+	)
+	
+	# Get cluster labels based on maximum membership
+	cluster_labels = np.argmax(u, axis=0)  # Shape (samples,)
+	return cluster_labels
+
+# Clustering
+n_clusters = 7
+labels = {}
+
+# 1. K-means for word forms
+kmeans_forms = KMeans(n_clusters=n_clusters, random_state=None)
+labels["kmeans_forms"] = kmeans_forms.fit_predict(X_forms)
+
+# 2. K-means for lemmas
+kmeans_lemmas = KMeans(n_clusters=n_clusters, random_state=None)
+labels["kmeans_lemmas"] = kmeans_lemmas.fit_predict(X_lemmas)
+
+# 3. C-means for word forms
+labels["cmeans_forms"] = fuzzy_cmeans_clustering(X_forms, n_clusters)
+
+# 4. C-means for lemmas
+labels["cmeans_lemmas"] = fuzzy_cmeans_clustering(X_lemmas, n_clusters)
+
+print(labels)
+
+def calculate_distances(X, labels):
+	# Convert X to a dense array if it's not already
+	X = X.toarray() if not isinstance(X, np.ndarray) else X
+	
+	n_clusters = len(set(labels))
+	cluster_distances = []
+	intra_cluster_distances = []
+	
+	for cluster in range(n_clusters):
+		cluster_points = X[labels == cluster]
+		if len(cluster_points) > 1:
+			# Average intra-cluster distance
+			intra_dist = np.mean(pairwise_distances(cluster_points))
+			intra_cluster_distances.append(intra_dist)
+		
+		# Centroid or median of the current cluster
+		cluster_center = np.mean(cluster_points, axis=0)
+		cluster_distances.append(cluster_center)
+	
+	# Average inter-cluster distance
+	inter_cluster_distances = np.mean(pairwise_distances(cluster_distances))
+	
+	return np.mean(intra_cluster_distances), inter_cluster_distances
+
+# Calculating metrics
+metrics = {
+	"kmeans_forms": calculate_distances(X_forms, labels["kmeans_forms"]),
+	"kmeans_lemmas": calculate_distances(X_lemmas, labels["kmeans_lemmas"]),
+	"cmeans_forms": calculate_distances(X_forms, labels["cmeans_forms"]),
+	"cmeans_lemmas": calculate_distances(X_lemmas, labels["cmeans_lemmas"]),
+}
+
+def print_clusters(labels):
+	for cluster in range(len(set(labels))):
+		print(f"    {cluster}: {[filenames[i] for i in range(len(filenames)) if labels[i] == cluster]}")
+
+def plot_clusters(X, labels, title):
+	from sklearn.decomposition import PCA
+	pca = PCA(n_components=2)
+	X_pca = pca.fit_transform(X.toarray())
+	plt.figure(figsize=(8, 6))
+	plt.scatter(X_pca[:, 0], X_pca[:, 1], c=labels, cmap="viridis", s=50)
+	plt.colorbar()
+	plt.title(title)
+	plt.xlabel("PCA1")
+	plt.ylabel("PCA2")
+	plt.show()
+
+# Display results
+for method, (intra_dist, inter_dist) in metrics.items():
+print(f"Method: {method}")
+print(f"  Average intra-cluster distance: {intra_dist}")
+print(f"  Average inter-cluster distance: {inter_dist}")
+print(f"  Clusters:")
+print_clusters(labels[method])
+print("\n")
+
+# Visualization for each method
+plot_clusters(X_forms, labels["kmeans_forms"], "K-means (word forms)")
+plot_clusters(X_lemmas, labels["kmeans_lemmas"], "K-means (lemmas)")
+plot_clusters(X_forms, labels["cmeans_forms"], "C-means (word forms)")
+plot_clusters(X_lemmas, labels["cmeans_lemmas"], "C-means (lemmas)")
+\end{lstlisting}
+
+\clearpage

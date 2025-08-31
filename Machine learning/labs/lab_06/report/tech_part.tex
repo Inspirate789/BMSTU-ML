@@ -1,0 +1,118 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация алгоритма фильтрации спама с использованием наивного байесовского классификатора.
+
+\begin{lstlisting}[label=lst:1,caption=Классификация <<Ирисов Фишера>> с использованием байесовского подхода]
+	import numpy as np
+	import pandas as pd
+	import matplotlib.pyplot as plt
+	import seaborn as sns
+	from sklearn import datasets
+	from sklearn.model_selection import train_test_split
+	from sklearn.metrics import confusion_matrix, classification_report, matthews_corrcoef
+	from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+	from sklearn.preprocessing import LabelEncoder
+	
+	from google.colab import drive
+	drive.mount('/content/drive')
+	
+	df = pd.read_excel('@/content/drive/MyDrive/Colab Notebooks/ml\_lab\_06/ЛР6\_Ирисы Фишера.xlsx@')
+	X = df[['@Длина чашелистика@', '@Ширина чашелистика@', '@Длина лепестка@', '@Ширина лепестка@']]
+	y = df['@Вид ириса@']
+	
+	label_encoder = LabelEncoder()
+	y_encoded = label_encoder.fit_transform(y)
+	
+	plt.figure(figsize=(12, 8))
+	for i, feature in enumerate(X.columns):
+		plt.subplot(2, 2, i+1)
+		for species in df['@Вид ириса@'].unique():
+			subset = df[df['@Вид ириса@'] == species]
+			plt.hist(subset[feature], label=species, alpha=0.5)
+		plt.xlabel(feature)
+		plt.ylabel('Count')
+		plt.legend(loc='upper right')
+	plt.tight_layout()
+	plt.show()
+	
+	pairs = [(i, j) for i in range(4) for j in range(i+1, 4)]
+	plt.figure(figsize=(15, 9))
+	for idx, (i, j) in enumerate(pairs):
+		plt.subplot(2, 3, idx+1)
+		for species in df['@Вид ириса@'].unique():
+			species_mask = df['@Вид ириса@'] == species
+			plt.scatter(X.loc[species_mask, X.columns[i]], X.loc[species_mask, X.columns[j]], label=species)
+		plt.xlabel(X.columns[i])
+		plt.ylabel(X.columns[j])
+		plt.legend()
+	plt.tight_layout()
+	plt.show()
+	
+	# Commented out IPython magic to ensure Python compatibility.
+	from mpl_toolkits import mplot3d
+	# %matplotlib inline
+	import numpy as np
+	import matplotlib.pyplot as plt
+	plt.figure(figsize=(7, 7))
+	ax = plt.axes(projection='3d')
+	ax.set_xlabel('@Длина лепестка@')
+	ax.set_ylabel('@Ширина лепестка@')
+	ax.set_zlabel('@Ширина чашелистика@')
+	
+	for species in df['@Вид ириса@'].unique():
+		species_mask = df['@Вид ириса@'] == species
+		dims = [X[species_mask][label] for label in ['@Длина лепестка@', '@Ширина лепестка@', '@Ширина чашелистика@']]
+		ax.scatter(dims, label=species)
+	
+	plt.figure(figsize=(5, 4))
+	sns.heatmap(X.corr(), annot=True, cmap='coolwarm')
+	plt.title('Overall Correlation Matrix')
+	plt.show()
+	
+	for species in df['@Вид ириса@'].unique():
+		species_data = X[df['@Вид ириса@'] == species]
+		plt.figure(figsize=(5, 4))
+		sns.heatmap(species_data.corr(), annot=True, cmap='coolwarm')
+		plt.title(f'Correlation Matrix for {species}')
+		plt.show()
+	
+	X_train, X_test, y_train, y_test = train_test_split(X, y_encoded, test_size=0.3, random_state=7)
+	lda = LinearDiscriminantAnalysis()
+	lda.fit(X_train, y_train)
+	y_pred = lda.predict(X_test)
+	
+	print("\nClassification Report:")
+	print(classification_report(y_test, y_pred, target_names=label_encoder.classes_))
+	print("\nAdditional Metrics:")
+	mcc = matthews_corrcoef(y_test, y_pred)
+	print(f"MCC: {mcc:.4f}")
+	
+	plt.figure(figsize=(8, 6))
+	cm = confusion_matrix(y_test, y_pred)
+	sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+							xticklabels=label_encoder.classes_,
+							yticklabels=label_encoder.classes_)
+	plt.title('Confusion Matrix')
+	plt.xlabel('Predicted')
+	plt.ylabel('True')
+	plt.show()
+	
+	probabilities = lda.predict_proba(X_test)
+	
+	plt.figure(figsize=(10, 6))
+	for i, species in enumerate(df['@Вид ириса@'].unique()):
+		plt.hist(probabilities[:, i], label=species, alpha=0.5)
+	plt.title('Posterior Probability Distributions')
+	plt.xlabel('Probability')
+	plt.ylabel('Count')
+	plt.legend()
+	plt.show()
+\end{lstlisting}
+
+\clearpage

@@ -1,0 +1,136 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация алгоритма обучения классификаторов респондентов, принимавших участие в социологическом исследовании.
+
+\begin{lstlisting}[label=lst:1,caption=Классификация с использованием дерева решений\, логистической регрессии и ансамблевого классификатора]
+	import numpy as np
+	import pandas as pd
+	import seaborn as sns
+	import matplotlib.pyplot as plt
+	import re
+	from sklearn.model_selection import train_test_split
+	from sklearn.metrics import confusion_matrix, classification_report, matthews_corrcoef
+	from sklearn.tree import DecisionTreeClassifier, plot_tree, DecisionTreeRegressor
+	from sklearn.ensemble import AdaBoostRegressor
+	from sklearn.linear_model import LogisticRegression
+	from operator import itemgetter
+	from scipy.special import expit
+	
+	pd.options.mode.copy_on_write = True
+	
+	from google.colab import drive
+	drive.mount('/content/drive')
+	
+	dataset = pd.read_excel('/content/drive/MyDrive/Colab Notebooks/ml_lab_08/@ММО\_ЛР8\_Исходные\_данные@.xlsx')
+	na = set(dataset.columns).difference(dataset.dropna(axis=1).columns)
+	class_names = list(set(dataset['@Ощущаемое.счастье@']))
+	dataset = dataset.drop(['@Респондент@'], axis=1)
+	dataset['@Сообщество@'] = dataset['@Сообщество@'].apply(lambda it: re.findall(r'\b\d+\b', it)[0])
+	dataset_unknowns = dataset[dataset['@Ощущаемое.счастье@'] == '@Неизвестно@']
+	dataset_knowns = dataset[dataset['@Ощущаемое.счастье@'] != '@Неизвестно@']
+	dataset_knowns['@Ощущаемое.счастье@'] = dataset_knowns['@Ощущаемое.счастье@'].apply(lambda it: class_names.index(it))
+	
+	plt.figure(figsize=(30,24))
+	sns.heatmap(dataset_knowns.corr().round(decimals=2), annot=True, linewidths=1, cmap='Reds')
+	
+	dataset_knowns['@Ощущаемое.счастье@'] = dataset_knowns['@Ощущаемое.счастье@'].apply(lambda it: class_names[it])
+	X_train, X_test, y_train, y_test = train_test_split(dataset_knowns.drop(['@Ощущаемое.счастье@'], axis=1), dataset_knowns['@Ощущаемое.счастье@'])
+	
+	decision_tree = DecisionTreeClassifier()
+	decision_tree.fit(X_train, y_train)
+	
+	plt.figure(figsize=(200, 30))
+	plot_tree(decision_tree, max_depth=5, feature_names=list(dataset), class_names=dataset_knowns['@Ощущаемое.счастье@'].unique(), filled=True, impurity=True, rounded=True, fontsize=6)
+	plt.savefig("output.pdf", format="pdf")
+	
+	group = {
+		'Prospering': 'Thriving',
+		'Thriving': 'Thriving',
+		'Blooming': 'Thriving',
+		'Doing well': 'Thriving',
+		'Just ok': 'Strugglng',
+		'Coping': 'Strugglng',
+		'Strugglng': 'Strugglng',
+		'Suffering': 'Suffering',
+		'Depressed': 'Suffering',
+		'Hopeless': 'Suffering',
+	}
+	
+	rank_mapping = {
+		'Prospering': 0,
+		'Thriving': 1,
+		'Blooming': 2,
+		'Doing well': 3,
+		'Just ok': 4,
+		'Coping': 5,
+		'Strugglng': 6,
+		'Suffering': 7,
+		'Depressed': 8,
+		'Hopeless': 9,
+		'accuracy': 10,
+		'macro avg': 11,
+		'weighted avg': 12
+	}
+	
+	y_test_grouped = itemgetter(*y_test)(group)
+	
+	def plot_classification(y_test, y_pred, y_test_grouped, y_pred_grouped):
+		print(f'MCC: {matthews_corrcoef(y_test, y_pred)}')
+		fig, axes = plt.subplots(2, 2, figsize=(17, 10))
+		clf_report = classification_report(y_test, y_pred, output_dict=True)
+		clf_report = {k: clf_report[k] for k in sorted(clf_report.keys(), key=lambda v: rank_mapping[v])}
+		clf_report_grouped = classification_report(y_test_grouped, y_pred_grouped, output_dict=True)
+		clf_report_grouped = {k: clf_report_grouped[k] for k in sorted(clf_report_grouped.keys(), key=lambda v: rank_mapping[v])}
+		sns.heatmap(pd.DataFrame(clf_report).iloc[:-1, :].T, ax=axes[0, 0], annot=True, cmap='Reds')
+		sns.heatmap(pd.DataFrame(clf_report_grouped).iloc[:-1, :].T, ax=axes[0, 1], annot=True, cmap='Reds')
+		cm_labels = sorted(list(set(y_test)), key=lambda v: rank_mapping[v])
+		cm = confusion_matrix(y_test, y_pred, labels=cm_labels)
+		cm_labels_grouped = sorted(list(set(y_test_grouped)), key=lambda v: rank_mapping[v])
+		cm_grouped = confusion_matrix(y_test_grouped, y_pred_grouped, labels=cm_labels_grouped)
+		sns.heatmap(cm, ax=axes[1, 0], xticklabels=cm_labels, yticklabels=cm_labels, annot=True, fmt='d', cmap='Reds')
+		sns.heatmap(cm_grouped, ax=axes[1, 1], xticklabels=cm_labels_grouped, yticklabels=cm_labels_grouped, annot=True, fmt='d', cmap='Reds')
+		axes[0, 0].set_title('Decision tree classifier (by class)')
+		axes[0, 1].set_title('Decision tree classifier (by group)')
+		plt.show()
+	
+	y_pred = decision_tree.predict(X_test)
+	y_pred_grouped = itemgetter(*y_pred)(group)
+	plot_classification(y_test, y_pred, y_test_grouped, y_pred_grouped)
+	
+	lr = LogisticRegression()
+	lr.fit(X_train, y_train)
+	y_pred = lr.predict(X_test)
+	y_pred_grouped = itemgetter(\*y_pred)(group)
+	plot_classification(y_test, y_pred, y_test_grouped, y_pred_grouped)
+	
+	valid_class_names = list(set(dataset_knowns['@Ощущаемое.счастье@']))
+	y = np.fromiter((valid_class_names.index(elem) for elem in y_train), np.int32) # y_train.apply(lambda it: class_names.index(it))
+	gbdt = DecisionTreeRegressor()
+	gbdt.fit(X_train, y)
+	
+	map_int = {np.int64(k): v for k, v in enumerate(valid_class_names)}
+	y_pred = gbdt.predict(X_test).astype(np.int64)
+	y_pred = itemgetter(\*y_pred)(map_int)
+	y_pred_grouped = itemgetter(\*y_pred)(group)
+	plot_classification(y_test, y_pred, y_test_grouped, y_pred_grouped)
+	
+	plt.figure(figsize=(200, 30))
+	plot_tree(gbdt, max_depth=5, feature_names=list(dataset), class_names=dataset_knowns['@Ощущаемое.счастье@'].unique(), filled=True, impurity=True, rounded=True, fontsize=6)
+	plt.savefig("output2.pdf", format="pdf")
+	
+	y = np.fromiter((valid_class_names.index(elem) for elem in y_train), np.int32)
+	abdt = AdaBoostRegressor(DecisionTreeRegressor(), n_estimators=250)
+	abdt.fit(X_train, y)
+	y_pred = abdt.predict(X_test).astype(np.int64)
+	y_pred = itemgetter(\*y_pred)(map_int)
+	y_pred_grouped = itemgetter(\*y_pred)(group)
+	plot_classification(y_test, y_pred, y_test_grouped, y_pred_grouped)
+\end{lstlisting}
+
+\clearpage

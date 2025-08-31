@@ -1,0 +1,161 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация алгоритма анализа результатов социологического исследования.
+
+\begin{lstlisting}[label=lst:1,caption=Анализ результатов социологического исследования]
+	mport numpy as np
+	import pandas as pd
+	import seaborn as sea
+	import matplotlib.pyplot as plt
+	from sklearn.linear_model import LinearRegression
+	from sklearn.metrics import mean_absolute_error, r2_score
+	import re
+	import math
+	
+	pd.options.mode.copy_on_write = True
+	
+	from google.colab import drive
+	drive.mount('/content/drive')
+	
+	dataset = pd.read_excel('/content/drive/MyDrive/Colab Notebooks/ml_lab_04/@ММО\_ЛР4\_Исходные данные@.xlsx')
+	dataset
+	
+	test_dataset = pd.read_excel('/content/drive/MyDrive/Colab Notebooks/ml_lab_04/@ММО\_ЛР4\_Данные для проверки@.xlsx')
+	test_dataset
+	
+	test_dataset['@Сообщество@'] = test_dataset['@Сообщество@'].apply(lambda it: re.findall(r'\b\d+\b', it)[0])
+	test_dataset['@Респондент@'] = test_dataset['@Респондент@'].apply(lambda it: re.findall(r'\b\d+\b', it)[0])
+	
+	dataset['@Сообщество@'] = dataset['@Сообщество@'].apply(lambda it: re.findall(r'\b\d+\b', it)[0])
+	dataset['@Респондент@'] = dataset['@Респондент@'].apply(lambda it: re.findall(r'\b\d+\b', it)[0])
+	dataset
+	
+	unknowns_dataset = dataset[pd.isnull(dataset['@Оценка.благополучия@'])]
+	unknowns_dataset
+	
+	knowns_dataset = dataset[pd.notnull(dataset['@Оценка.благополучия@'])]
+	knowns_dataset
+	
+	unknowns_data = test_dataset[test_dataset.index.isin(unknowns_dataset.index)]
+	unknowns_data
+	
+	plt.figure(figsize=(15,5))
+	src = [
+		'@Среднегодовой.доход,.тыс..\$@',
+		'@Объем.потребленного.алкоголя.в.год,.л.@',
+		'@Количество.членов.семьи@',
+		'@Количество.лет.образования@',
+		'@Доля.от.дохода.семьи.которая.тратится.на.продовольствие,.\%@',
+	]
+	dst = [
+		'@Оценка.благополучия@',
+		'@Оценка.социальной.поддержки@',
+		'@Ожидаемая.продолжительность.здоровой.жизни@',
+		'@Свобода.граждан.самостоятельно.принимать.жизненно.важные.решения@',
+		'@Индекс.Щедрости@',
+		'@Индекс.отношения.к.коррупции@',
+		'@Оценка.риска.безработицы@',
+		'@Индекс.кредитного.оптимизма@',
+		'@Индекс.страха.социальных.конфликтов@',
+		'@Индекс.семьи@',
+		'@Индекс.продовольственной.безопасности@',
+		'@Чувство.технологического.прогресса@',
+		'@Чувство.неравенства.доходов.в.обществе@',
+	]
+	correlation = knowns_dataset.corr().round(decimals=3).loc[src,dst].head(5)
+	#correlation
+	sea.heatmap(correlation, annot=True, linewidths=1)
+	
+	plt.figure(figsize=(30,25))
+	correlation = knowns_dataset.corr().round(decimals=3)
+	#correlation
+	sea.heatmap(correlation, annot=True, linewidths=1)
+	
+	X_train = knowns_dataset[src]
+	y_train = knowns_dataset[dst]
+	X_test = unknowns_data[src]
+	y_test = unknowns_data[[elem.replace('.', ' ') for elem in dst]]
+	model = LinearRegression()
+	model.fit(X_train, y_train)
+	
+	y_pred = model.predict(X_test)
+	mae = mean_absolute_error(y_test, y_pred)
+	print(f'@Средняя абсолютная ошибка@: {mae:.2f}')
+	
+	dataset[dst] = dataset[dst].fillna(pd.DataFrame(y_pred, columns=dst))
+	dataset.head(15)
+	
+	errors, r2s, correlations = [], [], []
+	
+	print('@Средняя абсолютная ошибка определения признаков состояния / R2 / суммарная корреляция с признаками причины@\n')
+	for state_feature in dst:
+		X_train = knowns_dataset[src]
+		y_train = knowns_dataset[state_feature]
+		X_test = unknowns_data[src]
+		y_test = unknowns_data[state_feature.replace('.', ' ')]
+		model = LinearRegression()
+		model.fit(X_train, y_train)
+		y_pred = model.predict(X_test)
+		mae = mean_absolute_error(y_test, y_pred)
+		r2 = r2_score(y_test, y_pred) * 100
+		corr = correlation[state_feature].abs().sum()
+		print(f'{state_feature}: {mae:.2f} / {r2:.2f} / {corr:.2f}')
+		errors.append(mae)
+		r2s.append(r2)
+		correlations.append(corr)
+		dataset[state_feature] = dataset[state_feature].fillna(pd.Series(y_pred))
+		
+	dataset.head(15)
+	
+	plt.figure(figsize=(10,7))
+	plt.plot(errors, label='MAE')
+	plt.plot(r2s, label='R2 (x100)')
+	plt.plot(correlations, label='Abs. correlation sum')
+	plt.legend(loc='upper right')
+	plt.show()
+	
+	src = [
+		'@Среднегодовой.доход,.тыс..\$@',
+		'@Количество.членов.семьи@',
+		'@Доля.от.дохода.семьи.которая.тратится.на.продовольствие,.\%@',
+	]
+	dst = '@Индекс.отношения.к.коррупции@'
+	X_train = knowns_dataset[src]
+	y_train = knowns_dataset[dst]
+	X_test = unknowns_data[src]
+	y_test = unknowns_data[dst.replace('.', ' ')]
+	model = LinearRegression()
+	model.fit(X_train, y_train)
+	y_pred = model.predict(X_test)
+	mae = mean_absolute_error(y_test, y_pred)
+	print(f'@Средняя абсолютная ошибка@: {mae:.2f}')
+	dataset[dst].head(15)
+	
+	src = [
+		'@Среднегодовой.доход,.тыс..\$@',
+		'@Объем.потребленного.алкоголя.в.год,.л.@',
+		'@Количество.лет.образования@',
+		'@Доля.от.дохода.семьи.которая.тратится.на.продовольствие,.\%@',
+	]
+	dst = '@Индекс.семьи@'
+	
+	X_train = knowns_dataset[src]
+	y_train = knowns_dataset[dst]
+	X_test = unknowns_data[src]
+	y_test = unknowns_data[dst.replace('.', ' ')]
+	model = LinearRegression()
+	model.fit(X_train, y_train)
+	y_pred = model.predict(X_test)
+	mae = mean_absolute_error(y_test, y_pred)
+	print(f'@Средняя абсолютная ошибка@: {mae:.2f}')
+	
+	dataset[dst].head(15)
+\end{lstlisting}
+
+\clearpage

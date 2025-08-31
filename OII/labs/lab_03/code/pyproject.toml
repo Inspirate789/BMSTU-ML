@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "lab-03"
+version = "0.1.0"
+description = ""
+authors = ["Inspirate789 <andreysapozhkov535@gmail.com>"]
+readme = "README.md"
+
+[tool.pyright]
+venvPath = "/Users/inspirate/Library/Caches/pypoetry/virtualenvs"
+venv = "lab-03-BvwjJNAC-py3.13"
+
+[tool.poetry.dependencies]
+python = "^3.13"
+pygad = "^3.3.1"
+numpy = "^2.1.3"
+pandas = "^2.2.3"
+tqdm = "^4.67.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

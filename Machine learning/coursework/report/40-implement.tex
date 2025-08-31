@@ -1,0 +1,244 @@
+\chapter{Технологическая часть}
+
+В данном разделе будут описаны детали реализации ПО, а также приведены листинги кода.
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации алгоритмов был выбран язык Python ввиду наличия библиотек для проведения расчётов и обучения моделей, таких как numpy и sklearn.
+
+\section{Предобработка исходных данных}
+
+В листингах \ref{lst:1} и \ref{lst:2} представлены функции, реализующие предобработку исходных данных, включающую фильтрацию с помощью фильтра Калмана.
+
+\begin{lstlisting}[
+	caption={Функции для фильтрации исходных данных с помощью фильтра Калмана},
+	label=lst:1,
+	]
+	import numpy as np
+	
+	class KalmanFilter(object):
+		def __init__(
+			self, F = None, B = None, H = None, Q = None, 
+			R = None, P = None, x0 = None,
+		):
+			if(F is None or H is None):
+				raise ValueError("Set proper system dynamics.")
+			self.n = F.shape[1]
+			self.m = H.shape[1]
+			self.F = F
+			self.H = H
+			self.B = 0 if B is None else B
+			self.Q = np.eye(self.n) if Q is None else Q
+			self.R = np.eye(self.n) if R is None else R
+			self.P = np.eye(self.n) if P is None else P
+			self.x = np.zeros((self.n, 1)) if x0 is None else x0
+		
+		def predict(self, u = 0):
+			self.x = np.dot(self.F, self.x) + np.dot(self.B, u)
+			self.P = np.dot(np.dot(self.F, self.P), self.F.T) + self.Q
+			return self.x
+		
+		def update(self, z):
+			y = z - np.dot(self.H, self.x)
+			S = self.R + np.dot(self.H, np.dot(self.P, self.H.T))
+			K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
+			self.x = self.x + np.dot(K, y)
+			I = np.eye(self.n)
+			self.P = np.dot(np.dot(I - np.dot(K, self.H), self.P), 
+				(I - np.dot(K, self.H)).T) + np.dot(np.dot(K, self.R), K.T)
+	
+	def filter(data): 
+		dt = 1.0/60
+		F = np.array([[1, dt, 0], [0, 1, dt], [0, 0, 1]])
+		H = np.array([1, 0, 0]).reshape(1, 3)
+		Q = np.array([
+			[0.05, 0.05, 0.0],
+			[0.05, 0.05, 0.0], 
+			[0.0, 0.0, 0.0],
+		])
+		R = np.array([0.5]).reshape(1, 1)
+		kf = KalmanFilter(F = F, H = H, Q = Q, R = R)
+		predictions = []
+		for z in data:
+			prediction = np.dot(H, kf.predict())[0]
+			prediction = int(round(prediction[0], 0))
+			predictions.append(prediction)
+			kf.update(z)
+	
+		return predictions
+\end{lstlisting}
+
+\begin{lstlisting}[
+	caption={Функция считывания и предобработки исходных данных},
+	label=lst:2,
+	]
+	def read_input():
+		dist_range = np.arange(0.1, 5+0.001, 0.1)
+		rssi = []
+		rssi_filtered = []
+		lost_total = 0
+		rssi_min, rssi_max = None, None
+		print('input:')
+		for dist in dist_range:
+			data, lost_count = read_rssi_data(round(dist, 1))
+			lost_total += lost_count
+			filtered_data = filter(data)
+			rssi.append(data)
+			rssi_filtered.append(filtered_data)
+			if not rssi_min or min(data) < rssi_min:
+				rssi_min = min(data)
+			if not rssi_max or max(data) > rssi_max:
+				rssi_max = max(data)
+		total_length = sum([len(data) for data in rssi])
+		loss = round(100*lost_total/total_length, 2)
+		print(f'total: {total_length} + {lost_total} invalid ({loss}%)')
+		rssi_min, rssi_max = rssi_min - 10, rssi_max + 10
+		rssi_range = np.arange(rssi_min, rssi_max + 1)
+		filtered_length = sum([len(data) for data in rssi_filtered])
+		rssi_filtered = [
+			[val for val in row if rssi_min <= val <= rssi_max]
+			for row in rssi_filtered
+		]
+		new_filtered_length = sum([len(data) for data in rssi_filtered])
+		loss = filtered_length-new_filtered_length)/filtered_length
+		loss = round(100*(loss, 2)
+		print(f'after filtration: {new_filtered_length} entries')
+		print(f'{filtered_length-new_filtered_length} invalid ({loss}%)')
+		return rssi, rssi_filtered, dist_range, rssi_range
+\end{lstlisting}
+
+\section{Обучение модели}
+
+На листингах \ref{lst:3} и \ref{lst:4} представлены функции для оптимизации гиперпараметров алгоритма обучения модели гауссовой смеси. Для предотвращения явления переобучения, алгоритм обучения при схожей точности апппроксимации исходного распределения и точности построения регрессии у двух моделей отдавал предпочтение той, которая имеет меньшее число компонент в смеси. Именно число компонент смеси определяет обобщающую способность модели (чем меньше компонент, тем больше обобщающая способность).
+
+\begin{lstlisting}[
+	caption={Функция построения модели линейной регрессии для определения параметра модели потерь мощности сигнала на пути от источника до приёмника},
+	label=lst:3,
+	]
+	import numpy as np
+	from sklearn.linear_model import LinearRegression
+	from input import read_input
+	from matstat import calculate_distributions, calculate_mean_vars
+	
+	def make_regression(rssi_range, dist_range, rssi_frequencies, \
+		rssi_0, dist_0):
+		rssi_grid, dist_grid = np.meshgrid(rssi_range, dist_range)
+		rssi_data = rssi_grid.ravel().reshape(-1, 1)
+		dist_data = dist_grid.ravel().reshape(-1, 1)
+		weights = rssi_frequencies.reshape(-1, 1).ravel()
+		dist_transformed = np.log10(dist_data / dist_0)  # log10(d/d0)
+		rssi_transformed = rssi_data - rssi_0  # P - P0
+		model = LinearRegression(fit_intercept=False)
+		model.fit(dist_transformed, rssi_transformed, sample_weight=weights)
+		k = model.coef_[0][0]
+		n = -k / 10
+		return n
+	
+	def main():
+		rssi, rssi_filtered, dist_range, rssi_range = read_input()
+		_, rssi_filtered_frequencies = calculate_distributions(rssi, \
+			rssi_filtered, rssi_range)
+		means_filtered, _, vars_filtered, _ = \
+			calculate_mean_vars(rssi_filtered)
+		best_point = np.argmin(vars_filtered[5:]) + 5
+		dist_0 = dist_range[best_point]
+		rssi_0 = means_filtered[best_point]
+		print(f"d0: {dist_0} м")
+		print(f"P0: {rssi_0} дБм (var: {vars_filtered[best_point]:.2f} дБм)")
+		n = make_regression(rssi_range, dist_range, \
+			rssi_filtered_frequencies, rssi_0, dist_0)
+		print(f"n: {n:.10f}")
+		return n
+\end{lstlisting}
+
+\begin{lstlisting}[
+	caption={Функция подбора гиперпараметров для EM-алгоритма обучения модели гауссовой смеси},
+	label=lst:4,
+	]
+	import numpy as np
+	import matplotlib.pyplot as plt
+	from sklearn.mixture import GaussianMixture
+	from scipy.stats import multivariate_normal
+	from input import read_input
+	from matstat import calculate_distributions, calculate_mean_vars
+	from regression import make_regression
+	from sklearn.metrics import mean_squared_error
+	
+	def create_samples_from_weights(X_grid, Y_grid, W):
+		W_norm = W / W.sum()
+		indices = np.random.choice(np.arange(len(W_norm.ravel())), 
+			size=1000000, 
+			p=W_norm.ravel())
+		x_samples = X_grid.ravel()[indices]
+		y_samples = Y_grid.ravel()[indices]
+		return np.column_stack([x_samples, y_samples])
+	
+	def main():
+		rssi, rssi_filtered, dist_range, rssi_range = read_input()
+		_, rssi_filtered_frequencies = \
+			calculate_distributions(rssi, rssi_filtered, rssi_range)
+		means_filtered, _, vars_filtered, _ = \
+			calculate_mean_vars(rssi_filtered)
+		best_point = np.argmin(vars_filtered[5:]) + 5
+		dist_0 = dist_range[best_point]
+		rssi_0 = means_filtered[best_point]
+		print(f"d0: {dist_0} м")
+		print(f"P0: {rssi_0} дБм (var: {vars_filtered[best_point]:.2f} дБм)")
+		best_n = make_regression(rssi_range, dist_range, \
+			rssi_filtered_frequencies, rssi_0, dist_0)
+		print(f"n: {best_n:.10f}")
+		X, Y = np.meshgrid(rssi_range, dist_range)
+		W = rssi_filtered_frequencies
+		W /= W.sum()
+		samples = create_samples_from_weights(X, Y, W)
+		Z_test = []
+		for sample in samples:
+			Z_test.append(W[np.where(np.isclose(dist_range, sample[1])), 
+			np.where(np.isclose(rssi_range, sample[0]))][0][0])
+		Z_test = np.array(Z_test)
+		
+		best_gmm = None
+		for n_components in range(1, 11):
+			if best_gmm is not None and \
+				n_components - best_gmm['n_components'] > 3:
+				break
+			print(f'n_components: {n_components} ... ', end='')
+			for _ in range(10):
+				gmm = GaussianMixture(n_components=n_components, \
+					max_iter=1000)
+				gmm.fit(samples)
+				weights = gmm.weights_
+				means = gmm.means_
+				covariances = gmm.covariances_
+				Z = np.sum([
+					weights[i] * multivariate_normal(
+						means[i], covariances[i],
+					).pdf(
+						np.vstack([X.ravel(), Y.ravel()]).T,
+					)
+					for i in range(n_components)
+				], axis=0).reshape(X.shape)
+				Z_predict = np.exp(gmm.score_samples(samples))
+				mse = mean_squared_error(Z_test, Z_predict)
+				n = make_regression(rssi_range, dist_range, Z, \
+					rssi_0, dist_0)
+				if best_gmm is not None:
+					mse_diff = mse - best_gmm['mse']
+					n_diff_diff = abs(n - best_n) - \
+						abs(best_gmm['n'] - best_n)
+				if best_gmm is None or \
+					mse_diff < -5e-5 and n_diff_diff < 1e-3 or \
+					n_diff_diff < -1e-4 and mse_diff < 1e-4:
+					best_gmm = {
+						'n_components': n_components,
+						'weights': weights,
+						'means': means,
+						'covariances': covariances,
+						'Z': Z,
+						'n': n,
+						'mse': mse,
+					}
+		print(best_gmm)
+\end{lstlisting}
+
+

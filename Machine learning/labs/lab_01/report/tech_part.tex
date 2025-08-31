@@ -1,0 +1,165 @@
+\chapter{Технологическая часть}
+
+\section{Средства реализации}
+
+В качестве языка программирования для реализации выбранных алгоритмов был выбран язык программирования Python ввиду наличия библиотек для обучения регрессионных моделей, таких как sklearn и numpy.
+
+\section{Реализация алгоритмов}
+
+На листинге \ref{lst:1} представлена реализация обучения модели полиномиальной регрессии с использованием метода наименьших квадратов и выбор оптимальной степени полинома по критерию AIC.
+
+\begin{lstlisting}[label=lst:1,caption=Обучение модели полиномиальной регрессии и выбор оптимальной степени полинома]
+	import numpy as np
+	import matplotlib.pyplot as plt
+	
+	x = np.random.rand(150)*10
+	y = 1/2*x + 2*np.sin(x) + 5
+	y = y + np.random.randn(150)*0.5
+	plt.scatter(x,y)
+	plt.show()
+	
+	degrees = np.arange(1, 11)
+	n = len(y)
+	
+	aic_scores = []
+	for degree in degrees:
+		p = np.polyfit(x, y, degree)
+		y_hat = np.polyval(p, x)
+		rss = np.sum((y - y_hat) ** 2) # residual sum of squares
+		aic = n * np.log10(rss / n) + 2 * (degree + 1)
+		aic_scores.append(aic)
+	
+	print("AIC: ", aic_scores)
+	
+	best_degree = degrees[np.argmin(aic_scores)]
+	print("@Степень полинома, обеспечивающая наибольшую точность: @", best_degree)
+	model = np.poly1d(np.polyfit(x, y, best_degree))
+	polyline = np.linspace(np.min(x), np.max(x), 250)
+	plt.scatter(x, y)
+	plt.plot(polyline, model(polyline), color='red')
+	plt.show()
+	
+	print(model)
+	
+	from sklearn.model_selection import train_test_split
+	X_train, X_test, y_train, y_test = train_test_split(x, y, test_size=0.20, random_state=777)
+	model = np.poly1d(np.polyfit(X_train, y_train, best_degree))
+	X_train.sort()
+	X_test.sort()
+	plt.scatter(x, y)
+	plt.plot(X_train, model(X_train), color='red', label='train data')
+	plt.plot(X_test, model(X_test), color='green', label='test data')
+	plt.legend()
+	plt.show()
+\end{lstlisting}
+
+На листинге \ref{lst:2} представлена реализация алгоритма визуализации феномена Рунге.
+
+\begin{lstlisting}[label=lst:2,caption=Визуализация феномена Рунге]
+	import numpy as np
+	import matplotlib.pyplot as plt
+	
+	def source_func(x):
+		return 1 / (1 + 25*x**2)
+	
+	def mse(y_true, y_pred):
+		return np.mean((y_true - y_pred)**2)
+	
+	l = 50
+	train_set = np.array([4*(i-1)/(l-1) - 2 for i in range(1, l+1)])
+	train_labels = source_func(train_set)
+	
+	k = 50
+	test_set = np.array([4*(i-0.5)/(k-1) - 2 for i in range(1, k)])
+	test_labels = source_func(test_set)
+	
+	x = np.arange(-2, 2, 0.01)
+	plt.plot(x, source_func(x))
+	plt.xlabel('x')
+	plt.ylabel('y')
+	plt.title('@Функция@ y(x) = 1 / (1 + 25*x^2)')
+	plt.show()
+	
+	degrees = range(1, 30)
+	train_loss = []
+	test_loss = []
+	for deg in degrees:
+		p = np.polyfit(train_set, train_labels, deg)
+		model = np.poly1d(p)
+		train_pred = np.polyval(model, train_set)
+		test_pred = np.polyval(model, test_set)
+		train_loss.append(mse(train_labels, train_pred))
+		test_loss.append(mse(test_labels, test_pred))
+	
+	plt.plot(degrees, train_loss, label='Training loss')
+	plt.plot(degrees, test_loss, label='Test loss')
+	plt.legend()
+	plt.xlabel('@Степень полинома@')
+	plt.ylabel('@Среднеквадратическая ошибка@')
+	plt.show()
+	
+	min_idx = np.argmin(test_loss)
+	best_deg = degrees[min_idx]
+	print("@Оптимальная степень полинома:@", best_deg)
+	plt.plot(x, source_func(x), label='@Реальное@')
+	
+	p = np.polyfit(train_set, train_labels, best_deg)
+	model = np.poly1d(p)
+	plt.plot(x, np.polyval(model, x), label='@Степень @{}'.format(best_deg))
+	
+	plt.legend()
+	plt.xlabel('x')
+	plt.ylabel('y')
+	plt.show()
+	
+	plt.plot(x, source_func(x), label='@Реальное@')
+	for deg in [best_deg-2, best_deg, best_deg+2]:
+		p = np.polyfit(train_set, train_labels, deg)
+		model = np.poly1d(p)
+		plt.plot(x, np.polyval(model, x), label='@Степень@ {}'.format(deg))
+	
+	plt.legend()
+	plt.xlabel('x')
+	plt.ylabel('y')
+	plt.show()
+	
+	plt.plot(x, source_func(x), label='@Реальное@')
+	for deg in range(5,24):
+		p = np.polyfit(train_set, train_labels, deg)
+		model = np.poly1d(p)
+		plt.plot(x, np.polyval(model, x), label='@Степень@ {}'.format(deg))
+	
+	plt.xlabel('x')
+	plt.ylabel('y')
+	plt.show()
+	
+	for i, deg in enumerate(degrees):
+		print(f"@Степень@ {deg}:")
+		print(f"Train MSE = {train_loss[i]:.3f}")
+		print(f"Test MSE = {test_loss[i]:.3f}\n")
+	
+	l = 50
+	train_set = np.array([4*(i-1)/(l-1) - 2 for i in range(1, l+1)])
+	train_labels = source_func(train_set)
+	
+	k = 50
+	test_set = np.array([4*(i-0.5)/(k-1) - 2 for i in range(1, k)])
+	test_labels = source_func(test_set)
+	
+	deg = 55
+	p = np.polyfit(train_set, train_labels, deg)
+	model = np.poly1d(p)
+	
+	plt.plot(train_set, np.polyval(model, train_set), color='red', label='@Степень@ {} (train)'.format(deg), marker = 'o')
+	plt.scatter(test_set, test_labels, color='blue', marker = 'o', facecolors='none')
+	plt.plot(test_set, np.polyval(model, test_set), color='blue', label='@Степень@ {} (test)'.format(deg), marker = 'o', markerfacecolor='none')
+	plt.plot(x, source_func(x), color='green', label='@Исходная кривая@')
+	plt.xlabel('x')
+	plt.ylabel('y')
+	plt.xlim(-0.25, 2)
+	plt.ylim(-0.1, 1.5)
+	plt.legend()
+	plt.show()
+\end{lstlisting}
+
+\clearpage
