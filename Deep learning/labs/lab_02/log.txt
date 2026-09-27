@@ -1,0 +1,116 @@
+Загрузка тренировочных данных...
+Загружено 15000 тренировочных изображений
+Загрузка тестовых данных...
+Загружено 3000 тестовых изображений
+Количество классов: 15
+Распределение меток в тренировочном наборе: [1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000]
+Mean: [0.4257687032222748], Std: [0.236958846449852]
+Модель создана: 9408 -> 1024 -> 512 -> 15
+Начинаем обучение на 100 эпох...
+Эпоха   1/100 | Train Loss: 2.0211, Train Acc: 53.39% | Test Loss: 3.6719, Test Acc: 15.87%
+Эпоха   2/100 | Train Loss: 1.9493, Train Acc: 46.58% | Test Loss: 3.7307, Test Acc: 19.23%
+Эпоха   3/100 | Train Loss: 1.7450, Train Acc: 51.59% | Test Loss: 3.6595, Test Acc: 21.70%
+Эпоха   4/100 | Train Loss: 1.4856, Train Acc: 57.89% | Test Loss: 3.6697, Test Acc: 22.87%
+Эпоха   5/100 | Train Loss: 1.3457, Train Acc: 60.87% | Test Loss: 3.6084, Test Acc: 24.20%
+Эпоха   6/100 | Train Loss: 1.2231, Train Acc: 63.90% | Test Loss: 3.3852, Test Acc: 26.33%
+Эпоха   7/100 | Train Loss: 1.1375, Train Acc: 66.40% | Test Loss: 3.2979, Test Acc: 28.57%
+Эпоха   8/100 | Train Loss: 1.0357, Train Acc: 69.41% | Test Loss: 3.1175, Test Acc: 31.30%
+Эпоха   9/100 | Train Loss: 0.9743, Train Acc: 71.60% | Test Loss: 2.9661, Test Acc: 33.07%
+Эпоха  10/100 | Train Loss: 0.8968, Train Acc: 73.91% | Test Loss: 2.8724, Test Acc: 34.47%
+Эпоха  11/100 | Train Loss: 0.8065, Train Acc: 76.37% | Test Loss: 2.7117, Test Acc: 36.80%
+Эпоха  12/100 | Train Loss: 0.7423, Train Acc: 78.71% | Test Loss: 2.5988, Test Acc: 39.20%
+Эпоха  13/100 | Train Loss: 0.6912, Train Acc: 80.22% | Test Loss: 2.4915, Test Acc: 40.83%
+Эпоха  14/100 | Train Loss: 0.6365, Train Acc: 82.05% | Test Loss: 2.3834, Test Acc: 42.83%
+Эпоха  15/100 | Train Loss: 0.5859, Train Acc: 83.69% | Test Loss: 2.2384, Test Acc: 44.70%
+Эпоха  16/100 | Train Loss: 0.5402, Train Acc: 85.21% | Test Loss: 2.1106, Test Acc: 46.70%
+Эпоха  17/100 | Train Loss: 0.4978, Train Acc: 86.71% | Test Loss: 2.0250, Test Acc: 48.43%
+Эпоха  18/100 | Train Loss: 0.4595, Train Acc: 87.98% | Test Loss: 1.9246, Test Acc: 50.40%
+Эпоха  19/100 | Train Loss: 0.4246, Train Acc: 89.31% | Test Loss: 1.8392, Test Acc: 52.10%
+Эпоха  20/100 | Train Loss: 0.3900, Train Acc: 90.51% | Test Loss: 1.7479, Test Acc: 53.93%
+Эпоха  21/100 | Train Loss: 0.3600, Train Acc: 91.38% | Test Loss: 1.6451, Test Acc: 56.27%
+Эпоха  22/100 | Train Loss: 0.3302, Train Acc: 92.46% | Test Loss: 1.5467, Test Acc: 58.40%
+Эпоха  23/100 | Train Loss: 0.3023, Train Acc: 93.35% | Test Loss: 1.4555, Test Acc: 60.10%
+Эпоха  24/100 | Train Loss: 0.2777, Train Acc: 94.10% | Test Loss: 1.3683, Test Acc: 62.20%
+Эпоха  25/100 | Train Loss: 0.2538, Train Acc: 94.93% | Test Loss: 1.2814, Test Acc: 64.03%
+Эпоха  26/100 | Train Loss: 0.2311, Train Acc: 95.61% | Test Loss: 1.1995, Test Acc: 66.10%
+Эпоха  27/100 | Train Loss: 0.2100, Train Acc: 96.22% | Test Loss: 1.1238, Test Acc: 67.90%
+Эпоха  28/100 | Train Loss: 0.1908, Train Acc: 96.75% | Test Loss: 1.0452, Test Acc: 69.83%
+Эпоха  29/100 | Train Loss: 0.1728, Train Acc: 97.25% | Test Loss: 0.9789, Test Acc: 71.43%
+Эпоха  30/100 | Train Loss: 0.1562, Train Acc: 97.68% | Test Loss: 0.9150, Test Acc: 72.90%
+Эпоха  31/100 | Train Loss: 0.1404, Train Acc: 98.07% | Test Loss: 0.8585, Test Acc: 74.93%
+Эпоха  32/100 | Train Loss: 0.1257, Train Acc: 98.43% | Test Loss: 0.8034, Test Acc: 76.00%
+Эпоха  33/100 | Train Loss: 0.1124, Train Acc: 98.70% | Test Loss: 0.7558, Test Acc: 77.47%
+Эпоха  34/100 | Train Loss: 0.1006, Train Acc: 98.87% | Test Loss: 0.7113, Test Acc: 79.13%
+Эпоха  35/100 | Train Loss: 0.0900, Train Acc: 98.99% | Test Loss: 0.6718, Test Acc: 80.23%
+Эпоха  36/100 | Train Loss: 0.0806, Train Acc: 99.19% | Test Loss: 0.6380, Test Acc: 81.43%
+Эпоха  37/100 | Train Loss: 0.0720, Train Acc: 99.35% | Test Loss: 0.6068, Test Acc: 82.20%
+Эпоха  38/100 | Train Loss: 0.0643, Train Acc: 99.45% | Test Loss: 0.5791, Test Acc: 83.23%
+Эпоха  39/100 | Train Loss: 0.0576, Train Acc: 99.54% | Test Loss: 0.5534, Test Acc: 84.30%
+Эпоха  40/100 | Train Loss: 0.0516, Train Acc: 99.59% | Test Loss: 0.5319, Test Acc: 84.90%
+Эпоха  41/100 | Train Loss: 0.0464, Train Acc: 99.65% | Test Loss: 0.5140, Test Acc: 85.33%
+Эпоха  42/100 | Train Loss: 0.0418, Train Acc: 99.71% | Test Loss: 0.4969, Test Acc: 85.80%
+Эпоха  43/100 | Train Loss: 0.0378, Train Acc: 99.75% | Test Loss: 0.4829, Test Acc: 86.23%
+Эпоха  44/100 | Train Loss: 0.0343, Train Acc: 99.77% | Test Loss: 0.4707, Test Acc: 86.67%
+Эпоха  45/100 | Train Loss: 0.0312, Train Acc: 99.81% | Test Loss: 0.4603, Test Acc: 87.23%
+Эпоха  46/100 | Train Loss: 0.0285, Train Acc: 99.85% | Test Loss: 0.4511, Test Acc: 87.53%
+Эпоха  47/100 | Train Loss: 0.0261, Train Acc: 99.88% | Test Loss: 0.4431, Test Acc: 87.70%
+Эпоха  48/100 | Train Loss: 0.0240, Train Acc: 99.89% | Test Loss: 0.4365, Test Acc: 87.93%
+Эпоха  49/100 | Train Loss: 0.0220, Train Acc: 99.90% | Test Loss: 0.4307, Test Acc: 88.40%
+Эпоха  50/100 | Train Loss: 0.0203, Train Acc: 99.91% | Test Loss: 0.4257, Test Acc: 88.60%
+Эпоха  51/100 | Train Loss: 0.0188, Train Acc: 99.93% | Test Loss: 0.4215, Test Acc: 88.83%
+Эпоха  52/100 | Train Loss: 0.0175, Train Acc: 99.94% | Test Loss: 0.4177, Test Acc: 88.97%
+Эпоха  53/100 | Train Loss: 0.0163, Train Acc: 99.95% | Test Loss: 0.4145, Test Acc: 89.03%
+Эпоха  54/100 | Train Loss: 0.0152, Train Acc: 99.95% | Test Loss: 0.4118, Test Acc: 89.23%
+Эпоха  55/100 | Train Loss: 0.0142, Train Acc: 99.95% | Test Loss: 0.4099, Test Acc: 89.33%
+Эпоха  56/100 | Train Loss: 0.0133, Train Acc: 99.95% | Test Loss: 0.4081, Test Acc: 89.37%
+Эпоха  57/100 | Train Loss: 0.0124, Train Acc: 99.96% | Test Loss: 0.4069, Test Acc: 89.43%
+Эпоха  58/100 | Train Loss: 0.0116, Train Acc: 99.97% | Test Loss: 0.4056, Test Acc: 89.57%
+Эпоха  59/100 | Train Loss: 0.0109, Train Acc: 99.97% | Test Loss: 0.4044, Test Acc: 89.70%
+Эпоха  60/100 | Train Loss: 0.0102, Train Acc: 99.97% | Test Loss: 0.4034, Test Acc: 89.90%
+Эпоха  61/100 | Train Loss: 0.0096, Train Acc: 99.97% | Test Loss: 0.4026, Test Acc: 89.97%
+Эпоха  62/100 | Train Loss: 0.0091, Train Acc: 99.97% | Test Loss: 0.4019, Test Acc: 90.07%
+Эпоха  63/100 | Train Loss: 0.0087, Train Acc: 99.98% | Test Loss: 0.4013, Test Acc: 90.10%
+Эпоха  64/100 | Train Loss: 0.0082, Train Acc: 99.98% | Test Loss: 0.4009, Test Acc: 90.07%
+Эпоха  65/100 | Train Loss: 0.0079, Train Acc: 99.98% | Test Loss: 0.4006, Test Acc: 90.10%
+Эпоха  66/100 | Train Loss: 0.0075, Train Acc: 99.98% | Test Loss: 0.4003, Test Acc: 90.10%
+Эпоха  67/100 | Train Loss: 0.0072, Train Acc: 99.98% | Test Loss: 0.4001, Test Acc: 90.13%
+Эпоха  68/100 | Train Loss: 0.0070, Train Acc: 99.98% | Test Loss: 0.4000, Test Acc: 90.20%
+Эпоха  69/100 | Train Loss: 0.0067, Train Acc: 99.98% | Test Loss: 0.3999, Test Acc: 90.27%
+Эпоха  70/100 | Train Loss: 0.0065, Train Acc: 99.98% | Test Loss: 0.3998, Test Acc: 90.27%
+Эпоха  71/100 | Train Loss: 0.0063, Train Acc: 99.98% | Test Loss: 0.3998, Test Acc: 90.30%
+Эпоха  72/100 | Train Loss: 0.0061, Train Acc: 99.98% | Test Loss: 0.3997, Test Acc: 90.27%
+Эпоха  73/100 | Train Loss: 0.0059, Train Acc: 99.98% | Test Loss: 0.3997, Test Acc: 90.30%
+Обучение завершено.
++--------------+-----------+--------+--------+
+| Class        | Precision | Recall | F1     |
++--------------+-----------+--------+--------+
+| Bean         | 0.8100    | 0.9050 | 0.8549 |
++--------------+-----------+--------+--------+
+| Bitter_Gourd | 0.8900    | 0.9175 | 0.9036 |
++--------------+-----------+--------+--------+
+| Bottle_Gourd | 1.0000    | 0.9132 | 0.9547 |
++--------------+-----------+--------+--------+
+| Brinjal      | 0.8550    | 0.9096 | 0.8814 |
++--------------+-----------+--------+--------+
+| Broccoli     | 0.8700    | 0.8571 | 0.8635 |
++--------------+-----------+--------+--------+
+| Cabbage      | 0.9150    | 0.8798 | 0.8971 |
++--------------+-----------+--------+--------+
+| Capsicum     | 0.9550    | 0.9550 | 0.9550 |
++--------------+-----------+--------+--------+
+| Carrot       | 0.9750    | 0.9799 | 0.9774 |
++--------------+-----------+--------+--------+
+| Cauliflower  | 0.8500    | 0.8673 | 0.8586 |
++--------------+-----------+--------+--------+
+| Cucumber     | 0.9000    | 0.9278 | 0.9137 |
++--------------+-----------+--------+--------+
+| Papaya       | 0.9550    | 0.9052 | 0.9294 |
++--------------+-----------+--------+--------+
+| Potato       | 0.9250    | 0.9391 | 0.9320 |
++--------------+-----------+--------+--------+
+| Pumpkin      | 0.9050    | 0.8227 | 0.8619 |
++--------------+-----------+--------+--------+
+| Radish       | 0.9450    | 0.9265 | 0.9356 |
++--------------+-----------+--------+--------+
+| Tomato       | 0.7950    | 0.8457 | 0.8196 |
++--------------+-----------+--------+--------+
